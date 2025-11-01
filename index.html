@@ -314,6 +314,444 @@
             background: linear-gradient(145deg, #FF9999, #FF7F7F, #FF6666);
         }
 
+        /* Сокровище с плавной красивой анимацией без вращения */
+        .treasure {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 260px;
+            height: auto;
+            border: 10px solid #FFD700;
+            border-radius: 25px;
+            box-shadow: 0 0 50px #FFD700, inset 0 0 20px rgba(255,255,255,0.7);
+            animation: dropTreasure 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; /* Плавная кривая */
+            display: none;
+            z-index: 20;
+        }
+
+        @keyframes dropTreasure {
+            0% { transform: translate(-50%, -50%) scale(0) translateY(-100px); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        /* Фейерверки с градиентными частицами, теперь меньше */
+        .fireworks {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: none;
+            z-index: 30;
+        }
+
+        .firework {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: radial-gradient(circle, #FFD700, #FFA500);
+            border-radius: 50%;
+            animation: explode 5s infinite ease-out;
+            box-shadow: 0 0 20px currentColor;
+        }
+
+        @keyframes explode {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(25) translate(var(--dx), var(--dy)); opacity: 0; }
+        }
+
+        audio {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Подсказки -->
+    <div class="hint safe-hint" id="safeHint">→ Кликни на сейф, чтобы открыть его 💼</div>
+    <div class="hint key-hint" id="keyHint" style="display: none;">→ Кликни на ключ, чтобы вставить его в сундук 🔑</div>
+
+    <div class="safe" id="safe" draggable="false"></div>
+    <div class="key" id="key"></div>
+    <div class="chest" id="chest"></div>
+
+    <!-- Модальное окно для пароля -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h2>Введи секретный код</h2>
+            <div class="code-display" id="codeDisplay">____</div>
+            <div class="buttons">
+                <button class="btn" onclick="addDigit('1')">1</button>
+                <button class="btn" onclick="addDigit('2')">2</button>
+                <button class="btn" onclick="addDigit('3')">3</button>
+                <button class="btn" onclick="addDigit('4')">4</button>
+                <button class="btn" onclick="addDigit('5')">5</button>
+                <button class="btn" onclick="addDigit('6')">6</button>
+                <button class="btn" onclick="addDigit('7')">7</button>
+                <button class="btn" onclick="addDigit('8')">8</button>
+                <button class="btn" onclick="addDigit('9')">9</button>
+                <button class="btn" onclick="addDigit('0')" style="grid-column: span 3; margin-top: 10px;">0</button>
+                <button class="btn btn-clear" onclick="clearCode()">Очистить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Сокровище -->
+    <img src="image.png" alt="Сокровище" class="treasure" id="treasure">
+
+    <!-- Фейерверки -->
+    <div class="fireworks" id="fireworks"></div>
+
+    <audio id="music" src="music.mp3" loop preload="auto"></audio>
+
+    <script>
+        let code = '';
+        const correctCode = '4729';
+        let hintTimeout;
+
+        function resetHintTimeout() {
+            clearTimeout(hintTimeout);
+            if (document.getElementById('safe').style.display !== 'none') {
+                hintTimeout = setTimeout(() => {
+                    if (!document.getElementById('modal').style.display) {
+                        document.getElementById('safeHint').classList.add('show');
+                    }
+                }, 5000);
+            } else if (document.getElementById('chest').style.display !== 'none') {
+                hintTimeout = setTimeout(() => {
+                    document.getElementById('keyHint').classList.add('show');
+                }, 5000);
+            }
+        }
+
+        // Показать первую подсказку через 5 сек
+        document.addEventListener('DOMContentLoaded', () => {
+            resetHintTimeout();
+        });
+
+        // Любые действия сбрасывают таймер
+        document.addEventListener('click', resetHintTimeout);
+        document.addEventListener('keydown', resetHintTimeout);
+
+        // Клик по сейфу
+        document.getElementById('safe').addEventListener('click', () => {
+            document.getElementById('modal').style.display = 'block';
+            code = '';
+            updateDisplay();
+            document.getElementById('safeHint').classList.remove('show');
+        });
+
+        // Закрыть модальное окно по клику вне
+        window.addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modal')) {
+                document.getElementById('modal').style.display = 'none';
+                code = '';
+                updateDisplay();
+                resetHintTimeout();
+            }
+        });
+
+        function addDigit(digit) {
+            if (code.length < 4) {
+                code += digit;
+                updateDisplay();
+                resetHintTimeout();
+                if (code === correctCode) {
+                    setTimeout(() => {
+                        document.getElementById('safe').style.display = 'none';
+                        document.getElementById('chest').style.display = 'block';
+                        document.getElementById('keyHint').style.display = 'block';
+                        document.getElementById('modal').style.display = 'none';
+                        resetHintTimeout();
+                    }, 800);
+                }
+            }
+        }
+
+        function clearCode() {
+            code = '';
+            updateDisplay();
+            resetHintTimeout();
+        }
+
+        function updateDisplay() {
+            document.getElementById('codeDisplay').textContent = code.padEnd(4, '_');
+        }
+
+        // Клик по ключу для анимации вставки
+        const key = document.getElementById('key');
+        key.addEventListener('click', () => {
+            if (document.getElementById('chest').style.display !== 'none') {
+                document.getElementById('keyHint').classList.remove('show');
+                key.classList.add('inserting');
+                // Включаем музыку сразу, чтоб играла фоном во время анимации
+                document.getElementById('music').play().catch(() => console.log('Музыка не загружена'));
+                setTimeout(() => {
+                    document.getElementById('chest').classList.add('open');
+                    setTimeout(() => {
+                        // Скрываем всю хуйню: сейф, ключ, сундук, подсказки, модалку
+                        document.getElementById('safe').style.display = 'none';
+                        document.getElementById('key').style.display = 'none';
+                        document.getElementById('chest').style.display = 'none';
+                        document.getElementById('modal').style.display = 'none';
+                        document.querySelectorAll('.hint').forEach(h => h.style.display = 'none');
+                        // Чёрный фон
+                        document.body.classList.add('final');
+                        // Показываем сокровище и фейерверки
+                        document.getElementById('treasure').style.display = 'block';
+                        document.getElementById('fireworks').style.display = 'block';
+                        createFireworks(); // Немного фейерверков
+                    }, 1200);
+                }, 2000); // После анимации ключа открываем сундук
+            }
+        });
+
+        // Фейерверки, теперь меньше — всего 20 штук
+        function createFireworks() {
+            const fireworks = document.getElementById('fireworks');
+            for (let i = 0; i < 20; i++) { // Уменьшено до 20
+                const firework = document.createElement('div');
+                firework.className = 'firework';
+                firework.style.left = Math.random() * 100 + '%';
+                firework.style.top = Math.random() * 100 + '%';
+                firework.style.background = `radial-gradient(circle, hsl(${Math.random() * 60 + 300}, 100%, 70%), hsl(${Math.random() * 60 + 300}, 100%, 50%))`;
+                firework.style.setProperty('--dx', (Math.random() - 0.5) * 500 + 'px');
+                firework.style.setProperty('--dy', (Math.random() - 0.5) * 500 + 'px');
+                firework.style.animationDelay = Math.random() * 4 + 's';
+                fireworks.appendChild(firework);
+                setTimeout(() => firework.remove(), 5000);
+            }
+            // Без повторения, чтоб не много
+        }
+    </script>
+</body>
+</html>            font-size: 18px;
+        }
+
+        .hint.safe-hint { top: 40%; left: 30%; }
+        .hint.key-hint { top: 75%; left: 10%; }
+
+        .safe {
+            width: 180px;
+            height: 230px;
+            background: linear-gradient(145deg, #708090, #5F6A6A, #4D4D4D); /* Многослойный градиент для объёма */
+            border: 6px solid #2F4F4F;
+            border-radius: 25px;
+            position: absolute;
+            top: 50%;
+            left: 40%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.35), inset 0 3px 6px rgba(255,255,255,0.4), inset 0 -3px 6px rgba(0,0,0,0.25);
+            z-index: 5;
+        }
+
+        .safe:hover {
+            transform: translate(-50%, -50%) scale(1.12) rotate(3deg);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.45), inset 0 3px 6px rgba(255,255,255,0.5);
+        }
+
+        /* Улучшенный сейф: добавляем ручку и замок */
+        .safe::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            width: 20px;
+            height: 100px;
+            background: #333;
+            border-radius: 10px;
+            transform: translateX(-50%);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .safe::after {
+            content: '🔒'; /* Смайлик замка */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 50px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+
+        .key {
+            width: 65px;
+            height: 95px;
+            background: linear-gradient(145deg, #FFD700, #FFA500, #FF8C00); /* Богатый золотой градиент */
+            border: 4px solid #DAA520;
+            border-radius: 12px;
+            position: absolute;
+            top: 80%; /* Ещё ниже для большего расстояния */
+            left: 20%; /* Дальше влево */
+            transform: translate(-50%, -50%);
+            cursor: pointer; /* Теперь кликабельный */
+            transition: all 0.6s ease;
+            z-index: 10;
+            box-shadow: 0 10px 25px rgba(255,215,0,0.6), inset 0 2px 4px rgba(255,255,255,0.7);
+            user-select: none;
+        }
+
+        .key:hover {
+            transform: translate(-50%, -50%) scale(1.2) rotate(10deg);
+            box-shadow: 0 15px 30px rgba(255,215,0,0.8);
+        }
+
+        .key.inserting {
+            animation: insertKey 2s ease-in-out forwards;
+        }
+
+        @keyframes insertKey {
+            0% { transform: translate(-50%, -50%) scale(1) rotate(0deg); left: 20%; top: 80%; }
+            50% { transform: scale(1.2) rotate(180deg); left: 40%; top: 50%; } /* Летит к сундуку и крутится */
+            100% { transform: scale(1.1) rotate(360deg); left: 40%; top: 50%; opacity: 0; } /* Вставляется и исчезает */
+        }
+
+        .key::before {
+            content: '🔑';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 55px;
+        }
+
+        .chest {
+            width: 180px;
+            height: 150px;
+            background: linear-gradient(145deg, #DEB887, #D2B48C, #CD853F); /* Текстурированный деревянный градиент */
+            border: 6px solid #8B4513;
+            border-radius: 25px;
+            position: absolute;
+            top: 50%;
+            left: 40%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.35);
+            display: none;
+            z-index: 5;
+        }
+
+        .chest:hover {
+            transform: translate(-50%, -50%) scale(1.12) rotate(-3deg);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.45);
+        }
+
+        .chest::after {
+            content: '';
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            width: 55px;
+            height: 35px;
+            background: #8B4513;
+            border-radius: 8px;
+            transform: translate(-50%, -50%);
+            box-shadow: inset 0 1px 3px rgba(255,255,255,0.3);
+        }
+
+        .chest.open {
+            animation: openChest 2.5s ease-in-out;
+        }
+
+        @keyframes openChest {
+            0% { transform: translate(-50%, -50%) rotateY(0deg) scale(1); }
+            50% { transform: translate(-50%, -50%) rotateY(90deg) scale(1.15); background: linear-gradient(145deg, #F4A460, #DAA520, #FF8C00); }
+            100% { transform: translate(-50%, -50%) rotateY(180deg) scale(1); }
+        }
+
+        /* Уменьшенное модальное окно */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            animation: fadeIn 0.6s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: linear-gradient(145deg, #FAFAFA, #F0F0F0, #E0E0E0);
+            margin: 20% auto; /* Опускаем ниже, чтоб компактнее */
+            padding: 30px; /* Меньше padding */
+            border: 3px solid #DCDCDC;
+            width: 300px; /* Уменьшаем ширину */
+            max-width: 80%; /* Responsive */
+            border-radius: 30px;
+            text-align: center;
+            color: #333;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.45);
+            font-family: 'Georgia', serif;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px; /* Меньше отступ */
+            color: #8B4513;
+            font-size: 24px; /* Меньше шрифт */
+            letter-spacing: 1px;
+        }
+
+        .code-display {
+            font-size: 48px; /* Уменьшаем размер цифр */
+            color: #DC143C;
+            margin: 25px 0; /* Меньше отступ */
+            letter-spacing: 15px; /* Меньше spacing */
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.25);
+            font-weight: bold;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px; /* Меньше gap */
+            margin: 25px 0;
+        }
+
+        .btn {
+            background: linear-gradient(145deg, #B8B8B8, #A0A0A0, #909090);
+            color: #333;
+            border: none;
+            padding: 15px; /* Меньше padding */
+            font-size: 24px; /* Меньше кнопки */
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.5s ease;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.25), inset 0 2px 4px rgba(255,255,255,0.6);
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: linear-gradient(145deg, #C8C8C8, #B0B0B0, #A0A0A0);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.35);
+        }
+
+        .btn-clear {
+            grid-column: span 3;
+            background: linear-gradient(145deg, #FF7F7F, #FF6666, #FF5252);
+            color: white;
+            margin-top: 15px; /* Меньше отступ */
+            font-size: 20px; /* Меньше шрифт */
+        }
+
+        .btn-clear:hover {
+            background: linear-gradient(145deg, #FF9999, #FF7F7F, #FF6666);
+        }
+
         /* Сокровище с роскошной анимацией */
         .treasure {
             position: absolute;
